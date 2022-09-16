@@ -1,117 +1,129 @@
-from pickle import TRUE
+from math import floor
 import sys
 import timeit
 import numpy as np
 import cv2
+# Universidade Tecnológica Federal do Paraná
+#===============================================================================
+# Partially working code.
 
-#INPUT_IMAGE =  'test_small.bmp'
+
+
+
 INPUT_IMAGE =  'b01 - Original.bmp'
-ALTURA_MIN = 4
-LARGURA_MIN = 4
-N_PIXELS_MIN = 4
+K_SIZE = 9
 
-def naiveBlur(img,height,length):
+def naiveBlur(img, height, length, channels):
     soma = 0
     img_B = img.copy()
+    pixels_janela = 0
+    margin= floor(K_SIZE/2)
 
-    for y in range(2,height-2,1):
-        for x in range(2,length-2,1): #range funcionando para a imagem b não para a imagem a ???????
-            for (i, j) in box8(x,y):  
-                 soma +=  img[i][j]
-                  
-
-            img_B[x][y]= soma/9 
-            soma = 0   
+    for z in range(channels):
+        for y in range(margin,height-margin):
+            for x in range(margin,length-margin):
+                for i in range(-K_SIZE, 0):
+                    for j in range(0,K_SIZE):
+                        if(y+i >= 0 and y+i < length-1 and x+j >= 0 and x+j < height-1):
+                            soma += img[y + i, x + j, z]                  
+                            pixels_janela += 1
+                if(pixels_janela != 0):
+                    img_B[y, x, z]= soma/pixels_janela
+                pixels_janela=0
+                soma = 0   
     return img_B  
 
 
-def splitBlur(img,height,length):
-    img_X = img.copy() # copy cria uma imagem nova, não apenas aponta a imagem nova pra antiga. 
+def splitBlur(img, height, length, channels):
+    img_X = img.copy()
     img_Y = img.copy()
+    margin= floor(K_SIZE/2)
     soma_Y = 0
     soma_X = 0
-    for y in range(2,height-2,1):
-        for x in range(2,length-2,1): #range funcionando para a imagem b não para a imagem a ???????
-            for (i, j) in box3_Y(x,y):  
-                 soma_Y +=  img[i][j]
-            for (i, j) in box3_X(x,y):  
-                 soma_X +=  img[i][j]                 
-                  
+    pixels_janela = 0
+    for z in range(channels):
+        for y in range(margin,height-margin):
+            for x in range(margin,length-margin):
+                for i in range(int(-K_SIZE), 0):
+                    if(y+i >= 0 and y+i < length-1):
+                        soma_Y += img[y + i, x, z]
+                        pixels_janela += 1
+                if(pixels_janela != 0):
+                    img_Y [y, x, z] = soma_Y/pixels_janela
+                pixels_janela=0
+                soma_Y = 0
 
-            img_X[x][y]= soma_X/3 
-            img_Y[x][y]= soma_Y/3
-            soma_Y = 0   
-            soma_X = 0
+    for z in range(channels):
+        for y in range(margin,height-margin):
+            for x in range(margin,length-margin):
+                for j in range(0, int(K_SIZE)):
+                    if(x >= 0 and x + j < length-1):
+                        soma_X += img_Y[y, x + j, z]
+                        pixels_janela += 1
+                if(pixels_janela != 0):
+                    img_X [y, x, z] = soma_X/pixels_janela
+                pixels_janela=0
+                soma_X = 0
 
- 
-    return cv2.addWeighted(img_X,0.5,img_Y,0.5,0) # faz a união das duas imgens:   cv.addWeighted(imagem1,peso,imagem2,peso,gamma) 
+    return img_X
     
-def integralBlur(img,height,length):
- img_B = img.copy() 
- cv2.integral(img)
 
- return 0   
+        
+def integralBlur(img,height,length,channels):
+    img = img.astype (np.float32) / 255
+    img_B = img.copy() 
 
+    intg_img = cv2.integral(img)
+   
+    margin= floor(K_SIZE/2)
 
-def box3_X(x,y):
-    return [(x - 1, y), (x,y), (x + 1, y)]
+    for z in range(channels):
+        for y in range(margin,height-margin):
+            for x in range(margin,length-margin):
+                img_B[x,y,z]= box_value(intg_img,x,y,z)
 
-def box3_Y(x,y):
-    return [(x, y - 1),(x,y), (x, y + 1)]
+    return img_B  
 
-def box8(x,y):
-    return [(x - 1, y), (x,y), (x + 1, y), (x, y - 1), (x, y + 1),(x - 1, y+1), (x + 1, y+1), (x-1, y - 1), (x+1, y - 1)]
+def box_value(intg_img,x,y,z):
+   
+    a= intg_img[x-floor((K_SIZE/2)),y-floor((K_SIZE/2)),z]
+
+    b= intg_img[x-floor((K_SIZE/2)),y+floor((K_SIZE/2)),z]
+    
+    c= intg_img[x+floor((K_SIZE/2)),y-floor((K_SIZE/2)),z] 
+
+    d= intg_img[x+floor((K_SIZE/2)),y+floor((K_SIZE/2)),z]
+  
+    return d - b - c + a 
 
 def main ():
 
-    # Abre a imagem em escala de cinza.
-    img = cv2.imread (INPUT_IMAGE, cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread (INPUT_IMAGE, cv2.IMREAD_COLOR)
     if img is None:
         print ('Erro abrindo a imagem.\n')
         sys.exit ()
 
     height = img.shape[0] 
-    length = img.shape[1]   
-
+    length = img.shape[1] 
+    channels = img.shape[2]  
+    img = img.reshape ((img.shape [0], img.shape [1], 3))
+   
     start_time = timeit.default_timer ()
     
-    img_B=splitBlur(img,height,length)
+    #img_B=naiveBlur(img, height, length, channels)
+
+    #img_B=splitBlur(img, height, length, channels)
+
+    #img_B=integralBlur(img, height, length, channels)
 
     print ('Tempo: %f' % (timeit.default_timer () - start_time))
 
-    cv2.imshow ('01 - output.png', img_B) 
+    
     cv2.imwrite ('01 - output.png', img_B)
 
-    
-   # # É uma boa prática manter o shape com 3 valores, independente da imagem ser
-   # # colorida ou não. Também já convertemos para float32.
-   # img = img.reshape ((img.shape [0], img.shape [1], 1))
-   # img = img.astype (np.float32) / 255
-
-    # Mantém uma cópia colorida para desenhar a saída.
-    #img_out = cv2.cvtColor (img, cv2.COLOR_GRAY2BGR)
-
-    # Segmenta a imagem.
-   # if NEGATIVO:
-       # img = 1 - img
-    #img = binariza (img, THRESHOLD)
-    #cv2.imshow ('01 - binarizada', img)
-    #cv2.imwrite ('01 - binarizada.png', img*255)
-
-    #start_time = timeit.default_timer ()
-    #componentes = rotula (img, LARGURA_MIN, ALTURA_MIN, N_PIXELS_MIN)
-    #n_componentes = len (componentes)
-    #print ('Tempo: %f' % (timeit.default_timer () - start_time))
-    #print ('%d componentes detectados.' % n_componentes)
-
-    # Mostra os objetos encontrados.
-    #for c in componentes:
-       # cv2.rectangle (img_out, (c ['L'], c ['T']), (c ['R'], c ['B']), (0,0,1))
-
-    #cv2.imshow ('02 - out', img_out)
-    #cv2.imwrite ('02 - out.png', img_out*255)
-    #cv2.waitKey ()
-    cv2.destroyAllWindows ()
 
 if __name__ == '__main__':
     main ()
+
+
+
