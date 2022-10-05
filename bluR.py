@@ -7,9 +7,6 @@ import cv2
 #===============================================================================
 # Partially working code.
 
-
-
-
 INPUT_IMAGE =  'b01 - Original.bmp'
 K_SIZE = 9
 
@@ -17,13 +14,13 @@ def naiveBlur(img, height, length, channels):
     soma = 0
     img_B = img.copy()
     pixels_janela = 0
-    margin= floor(K_SIZE/2)
+    margin= K_SIZE//2
 
     for z in range(channels):
-        for y in range(margin,height-margin):
-            for x in range(margin,length-margin):
-                for i in range(-K_SIZE, 0):
-                    for j in range(0,K_SIZE):
+        for y in range(height):
+            for x in range(length):
+                for i in range(-margin,margin+1):
+                    for j in range(-margin,margin+1):
                         if(y+i >= 0 and y+i < length-1 and x+j >= 0 and x+j < height-1):
                             soma += img[y + i, x + j, z]                  
                             pixels_janela += 1
@@ -37,15 +34,15 @@ def naiveBlur(img, height, length, channels):
 def splitBlur(img, height, length, channels):
     img_X = img.copy()
     img_Y = img.copy()
-    margin= floor(K_SIZE/2)
+    margin= K_SIZE//2
     soma_Y = 0
     soma_X = 0
     pixels_janela = 0
     for z in range(channels):
-        for y in range(margin,height-margin):
-            for x in range(margin,length-margin):
+        for y in range(height):
+            for x in range(length):
                 for i in range(int(-K_SIZE), 0):
-                    if(y+i >= 0 and y+i < length-1):
+                    if(y+i >= 0 and y+i < length):
                         soma_Y += img[y + i, x, z]
                         pixels_janela += 1
                 if(pixels_janela != 0):
@@ -54,10 +51,10 @@ def splitBlur(img, height, length, channels):
                 soma_Y = 0
 
     for z in range(channels):
-        for y in range(margin,height-margin):
-            for x in range(margin,length-margin):
+        for y in range(height):
+            for x in range(length):
                 for j in range(0, int(K_SIZE)):
-                    if(x >= 0 and x + j < length-1):
+                    if(x >= 0 and x + j < length):
                         soma_X += img_Y[y, x + j, z]
                         pixels_janela += 1
                 if(pixels_janela != 0):
@@ -75,24 +72,24 @@ def integralBlur(img,height,length,channels):
 
     intg_img = cv2.integral(img)
    
-    margin= floor(K_SIZE/2)
+    margin= K_SIZE//2
 
     for z in range(channels):
         for y in range(margin,height-margin):
             for x in range(margin,length-margin):
-                img_B[x,y,z]= box_value(intg_img,x,y,z)
+                img_B[x,y,z]= box_value(intg_img,x,y,z)/9
 
-    return img_B  
+    return img_B * 25
 
 def box_value(intg_img,x,y,z):
    
-    a= intg_img[x-floor((K_SIZE/2)),y-floor((K_SIZE/2)),z]
+    a= intg_img[x-K_SIZE//2,y-K_SIZE//2,z]
 
-    b= intg_img[x-floor((K_SIZE/2)),y+floor((K_SIZE/2)),z]
+    b= intg_img[x-K_SIZE//2,y+(K_SIZE//2)+1,z]
     
-    c= intg_img[x+floor((K_SIZE/2)),y-floor((K_SIZE/2)),z] 
+    c= intg_img[x+(K_SIZE//2)+1,y-K_SIZE//2,z] 
 
-    d= intg_img[x+floor((K_SIZE/2)),y+floor((K_SIZE/2)),z]
+    d= intg_img[x+(K_SIZE//2)+1,y+(K_SIZE//2)+1,z]
   
     return d - b - c + a 
 
@@ -114,7 +111,7 @@ def main ():
 
     #img_B=splitBlur(img, height, length, channels)
 
-    #img_B=integralBlur(img, height, length, channels)
+    img_B=integralBlur(img, height, length, channels)
 
     print ('Tempo: %f' % (timeit.default_timer () - start_time))
 
