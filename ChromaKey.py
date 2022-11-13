@@ -1,15 +1,16 @@
+# Erick Hian Dircksen
 #===============================================================================
 import cv2
 
 #===============================================================================
 
-INPUT_IMAGE =  '2.bmp'
+INPUT_IMAGE =  '0.bmp'
 INPUT_BACKGROND =  'background.jpg'
 #===============================================================================
 def giveMeTheMask(img):
 
  lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
- a_channel = lab[:,:,1] # melhor e mais simples maneira que encontramos descobrir com certa precisão oque é verde e oque não é.
+ a_channel = lab[:,:,1] # melhor e mais simples maneira que encontrei descobrir com certa precisão oque é verde e oque não é.
 
  th = cv2.threshold(a_channel, 106, 255, cv2.THRESH_BINARY_INV)[1] # faz o thereshold com base no canal verde, de acordo com valor estabelecido (106 foi o mais adequado nos testes)
 
@@ -26,9 +27,10 @@ def merge(mask,img_sorce,background):
  for y in range(height):
   for x in range(width):
    if mask[x,y] > 250:
-    img_sorce[x,y] = background[x,y] # faz a troca binária se a mask for muito clara, oque representra sem muito verde
+    img_sorce[x,y] = background[x,y] # faz a troca binária se a mask for muito clara, oque representra ser muito verde
    elif mask[x,y] < 250 and mask[x,y] > 120:  
-    img_sorce[x,y] = (((mask[x,y]/255))*background[x,y]) #aplica os pixels do backgrond de acordo com um peso, isso trata as bordos pois a mascara sofreu Blur.
+    img_sorce[x,y] = (((mask[x,y]/255))*background[x,y]) #aplica os pixels do backgrond de acordo com um peso, isso trata as bordos pois a mascara sofreu Blur. 
+                                                         #Causa aparencia de erosão das parte "finas" da imagem, mas considerei aceitavel por não ser uma "erosão" tão agressiva.
 
  return img_sorce
 
